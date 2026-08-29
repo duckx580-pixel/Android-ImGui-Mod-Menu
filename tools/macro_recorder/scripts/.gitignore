@@ -1,0 +1,4 @@
+# Recorded macros can capture keystrokes typed during recording (e.g. form
+# field values). Keep them local by default.
+*.xml
+!.gitignore
