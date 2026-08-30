@@ -17,6 +17,18 @@
 JavaVM *jvm = nullptr;
 JNIEnv *env = nullptr;
 
+// Toggle state for the Basic panel's movement modifications. The injection
+// layer (hooks/patches, applied elsewhere) reads these flags each frame to
+// decide whether to apply the corresponding modification.
+namespace ModState {
+    bool modFly = false;         // alters player vertical velocity to simulate creative flight
+    bool antiLava = false;       // detects lava tiles and prevents damage events
+    bool antiRespawn = false;    // intercepts respawn triggers and restores position
+    bool seeLockedDoor = false;  // reads door ownership labels without interacting
+    bool noclipGhost = false;    // removes collision boundaries while keeping visual rendering active
+    bool visualInvisV2 = false;  // adjusts player render opacity to zero while keeping input handling
+}
+
 // Persists the menu window's position/size across sessions.
 namespace MenuState {
     ImVec2 position = ImVec2(60.0f, 60.0f);
@@ -158,13 +170,12 @@ static void DrawBasicPanel() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    static bool menuEnabled = true;
-    static bool godMode = false;
-    static bool noClip = false;
-
-    ImGui::Checkbox(OBFUSCATE("Menu Enabled"), &menuEnabled);
-    ImGui::Checkbox(OBFUSCATE("God Mode"), &godMode);
-    ImGui::Checkbox(OBFUSCATE("No Clip"), &noClip);
+    ImGui::Checkbox(OBFUSCATE("ModFly"), &ModState::modFly);
+    ImGui::Checkbox(OBFUSCATE("Anti Lava"), &ModState::antiLava);
+    ImGui::Checkbox(OBFUSCATE("Anti Respawn"), &ModState::antiRespawn);
+    ImGui::Checkbox(OBFUSCATE("See Locked Door"), &ModState::seeLockedDoor);
+    ImGui::Checkbox(OBFUSCATE("Noclip and Ghost"), &ModState::noclipGhost);
+    ImGui::Checkbox(OBFUSCATE("Visual Invis V2"), &ModState::visualInvisV2);
 }
 
 static void DrawVisualPanel() {
