@@ -299,6 +299,12 @@ static void DrawExtractPanel() {
         ExtractState::extractRequested = true;
     }
 
+    ImGui::SameLine();
+
+    if (ImGui::Button(OBFUSCATE("Clear List"))) {
+        ExtractState::extractedItems.clear();
+    }
+
     ImGui::Spacing();
     ImGui::TextUnformatted(OBFUSCATE("Extracted Items"));
     ImGui::BeginChild("##extracted_items", ImVec2(0.0f, 0.0f), true);
