@@ -29,6 +29,17 @@ namespace ModState {
     bool visualInvisV2 = false;  // adjusts player render opacity to zero while keeping input handling
 }
 
+// Toggle state for the Visual panel. The rendering layer (applied elsewhere)
+// reads these flags each frame to decide what to draw or override.
+namespace VisualState {
+    bool nightVision = false;    // overrides ambient light values to full brightness
+    bool canSeeGhost = false;    // enables visibility of normally hidden entities by toggling their render flags
+    bool seeInsideChest = false; // forces chest inventory data to render regardless of lock state
+    bool seeFruit = false;       // reveals harvestable node labels and icons on the minimap
+    bool fastTake = false;       // bypasses pickup delay timers by setting interval values to zero
+    bool noName = false;         // disables player name label rendering
+}
+
 // Persists the menu window's position/size across sessions.
 namespace MenuState {
     ImVec2 position = ImVec2(60.0f, 60.0f);
@@ -183,11 +194,12 @@ static void DrawVisualPanel() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    static bool skinChanger = false;
-    static float fov = 90.0f;
-
-    ImGui::Checkbox(OBFUSCATE("Skin Changer"), &skinChanger);
-    ImGui::SliderFloat(OBFUSCATE("FOV"), &fov, 60.0f, 120.0f);
+    ImGui::Checkbox(OBFUSCATE("Night Vision"), &VisualState::nightVision);
+    ImGui::Checkbox(OBFUSCATE("Can See Ghost"), &VisualState::canSeeGhost);
+    ImGui::Checkbox(OBFUSCATE("See Inside Chest"), &VisualState::seeInsideChest);
+    ImGui::Checkbox(OBFUSCATE("See Fruit"), &VisualState::seeFruit);
+    ImGui::Checkbox(OBFUSCATE("Fast Take"), &VisualState::fastTake);
+    ImGui::Checkbox(OBFUSCATE("No Name"), &VisualState::noName);
 }
 
 static void DrawFindPathPanel() {
