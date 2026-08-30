@@ -11,12 +11,16 @@
 
 #include <cfloat>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
+#include <chrono>
 
 // JNI Support
 JavaVM *jvm = nullptr;
 JNIEnv *env = nullptr;
+
+static const std::chrono::steady_clock::time_point kStartTime = std::chrono::steady_clock::now();
 
 // Toggle state for the Basic panel's movement modifications. The injection
 // layer (hooks/patches, applied elsewhere) reads these flags each frame to
@@ -304,13 +308,75 @@ static void DrawExtractPanel() {
     ImGui::EndChild();
 }
 
+static double GetUptimeSeconds() {
+    return std::chrono::duration<double>(std::chrono::steady_clock::now() - kStartTime).count();
+}
+
+static long GetMemoryUsageMB() {
+    FILE *f = fopen("/proc/self/status", "r");
+    if (f == nullptr) return 0;
+
+    long memoryKB = 0;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "VmRSS:", 6) == 0) {
+            sscanf(line + 6, "%ld", &memoryKB);
+            break;
+        }
+    }
+    fclose(f);
+
+    return memoryKB / 1024;
+}
+
+static bool IsBasicCategoryActive() {
+    return ModState::modFly || ModState::antiLava || ModState::antiRespawn ||
+           ModState::seeLockedDoor || ModState::noclipGhost || ModState::visualInvisV2;
+}
+
+static bool IsVisualCategoryActive() {
+    return VisualState::nightVision || VisualState::canSeeGhost || VisualState::seeInsideChest ||
+           VisualState::seeFruit || VisualState::fastTake || VisualState::noName;
+}
+
+static bool IsFastCategoryActive() {
+    return FastState::noWalk || FastState::moonwalk ||
+           FastState::moveSpeedMultiplier != 1.0f || FastState::fallSpeedMultiplier != 1.0f;
+}
+
+static bool IsEspCategoryActive() {
+    return EspState::showName || EspState::showHealthBar || EspState::showItemGlow ||
+           EspState::showDistance || EspState::showBox || EspState::showLine;
+}
+
+// Ternary expressions can't pick between two OBFUSCATE(...) calls directly:
+// each call's return type bakes in the string's length, so two different
+// literals produce two different (unrelated) types. Routing both through a
+// same-typed `const char*` parameter here sidesteps that.
+static const char *SelectLabel(bool condition, const char *whenTrue, const char *whenFalse) {
+    return condition ? whenTrue : whenFalse;
+}
+
 static void DrawInfoPanel() {
     ImGui::TextUnformatted(OBFUSCATE("Info"));
     ImGui::Separator();
     ImGui::Spacing();
 
-    ImGui::TextUnformatted(OBFUSCATE("Android ImGui Mod Menu"));
-    ImGui::TextWrapped(OBFUSCATE("Use the category list on the left to switch between panels."));
+    ImGuiIO &io = ImGui::GetIO();
+    float fps = (io.DeltaTime > 0.0f) ? (1.0f / io.DeltaTime) : 0.0f;
+
+    ImGui::Text(OBFUSCATE("FPS: %.1f"), fps);
+    ImGui::Text(OBFUSCATE("Memory: %ld MB"), GetMemoryUsageMB());
+    ImGui::Text(OBFUSCATE("Status: %s"), SelectLabel(isInitialized, OBFUSCATE("Running"), OBFUSCATE("Initializing")));
+    ImGui::Text(OBFUSCATE("Uptime: %.0f s"), GetUptimeSeconds());
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::TextUnformatted(OBFUSCATE("Active Categories"));
+    ImGui::BulletText(OBFUSCATE("Basic: %s"), SelectLabel(IsBasicCategoryActive(), OBFUSCATE("Active"), OBFUSCATE("Idle")));
+    ImGui::BulletText(OBFUSCATE("Visual: %s"), SelectLabel(IsVisualCategoryActive(), OBFUSCATE("Active"), OBFUSCATE("Idle")));
+    ImGui::BulletText(OBFUSCATE("Fast: %s"), SelectLabel(IsFastCategoryActive(), OBFUSCATE("Active"), OBFUSCATE("Idle")));
+    ImGui::BulletText(OBFUSCATE("ESP: %s"), SelectLabel(IsEspCategoryActive(), OBFUSCATE("Active"), OBFUSCATE("Idle")));
 }
 
 struct Category {
