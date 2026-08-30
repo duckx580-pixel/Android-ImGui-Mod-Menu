@@ -12,6 +12,7 @@
 #include <cfloat>
 #include <cstdio>
 #include <string>
+#include <vector>
 
 // JNI Support
 JavaVM *jvm = nullptr;
@@ -58,6 +59,25 @@ namespace FastState {
     float fallSpeedMultiplier = 1.0f;
     bool noWalk = false;      // disables movement animation
     bool moonwalk = false;    // reverses movement direction input
+}
+
+// Toggle state for the ESP panel. The rendering layer (applied elsewhere)
+// reads these flags each frame to decide what overlays to draw.
+namespace EspState {
+    bool showName = false;       // renders nametags over entities
+    bool showHealthBar = false;  // draws health indicators above players
+    bool showItemGlow = false;   // applies highlight borders to valuable items on ground
+    bool showDistance = false;   // shows meter values under entity names
+    bool showBox = false;        // draws colored bounding boxes around players and NPCs
+    bool showLine = false;       // draws connection lines from player to nearby entities
+}
+
+// State for the Extract panel. The collection routine (applied elsewhere)
+// consumes extractRequested and appends the names of items it picked up to
+// extractedItems for display.
+namespace ExtractState {
+    bool extractRequested = false;
+    std::vector<std::string> extractedItems;
 }
 
 // Persists the menu window's position/size across sessions.
@@ -258,13 +278,12 @@ static void DrawEspPanel() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    static bool boxEsp = false;
-    static bool nameEsp = false;
-    static bool distanceEsp = false;
-
-    ImGui::Checkbox(OBFUSCATE("Box ESP"), &boxEsp);
-    ImGui::Checkbox(OBFUSCATE("Name ESP"), &nameEsp);
-    ImGui::Checkbox(OBFUSCATE("Distance ESP"), &distanceEsp);
+    ImGui::Checkbox(OBFUSCATE("Player Name"), &EspState::showName);
+    ImGui::Checkbox(OBFUSCATE("Health Bar"), &EspState::showHealthBar);
+    ImGui::Checkbox(OBFUSCATE("Item Glow"), &EspState::showItemGlow);
+    ImGui::Checkbox(OBFUSCATE("Distance"), &EspState::showDistance);
+    ImGui::Checkbox(OBFUSCATE("Box"), &EspState::showBox);
+    ImGui::Checkbox(OBFUSCATE("Line"), &EspState::showLine);
 }
 
 static void DrawExtractPanel() {
@@ -272,9 +291,17 @@ static void DrawExtractPanel() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    static bool autoExtract = false;
+    if (ImGui::Button(OBFUSCATE("Extract All"))) {
+        ExtractState::extractRequested = true;
+    }
 
-    ImGui::Checkbox(OBFUSCATE("Auto Extract"), &autoExtract);
+    ImGui::Spacing();
+    ImGui::TextUnformatted(OBFUSCATE("Extracted Items"));
+    ImGui::BeginChild("##extracted_items", ImVec2(0.0f, 0.0f), true);
+    for (const std::string &item : ExtractState::extractedItems) {
+        ImGui::TextUnformatted(item.c_str());
+    }
+    ImGui::EndChild();
 }
 
 static void DrawInfoPanel() {
