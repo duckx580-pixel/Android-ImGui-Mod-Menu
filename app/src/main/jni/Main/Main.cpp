@@ -40,6 +40,26 @@ namespace VisualState {
     bool noName = false;         // disables player name label rendering
 }
 
+// Target coordinates for the FindPath panel. The navigation routine
+// (applied elsewhere) reads targetX/targetY and consumes teleportRequested
+// once it has executed the position override.
+namespace FindPathState {
+    int inputX = 0;
+    int inputY = 0;
+    int targetX = 0;
+    int targetY = 0;
+    bool teleportRequested = false;
+}
+
+// Speed multipliers and movement toggles for the Fast panel. The movement
+// layer (applied elsewhere) reads these values each frame.
+namespace FastState {
+    float moveSpeedMultiplier = 1.0f;
+    float fallSpeedMultiplier = 1.0f;
+    bool noWalk = false;      // disables movement animation
+    bool moonwalk = false;    // reverses movement direction input
+}
+
 // Persists the menu window's position/size across sessions.
 namespace MenuState {
     ImVec2 position = ImVec2(60.0f, 60.0f);
@@ -207,11 +227,19 @@ static void DrawFindPathPanel() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    static bool autoPath = false;
-    static float pathSpeed = 1.0f;
+    ImGui::InputInt(OBFUSCATE("X"), &FindPathState::inputX);
+    ImGui::InputInt(OBFUSCATE("Y"), &FindPathState::inputY);
 
-    ImGui::Checkbox(OBFUSCATE("Auto Path"), &autoPath);
-    ImGui::SliderFloat(OBFUSCATE("Path Speed"), &pathSpeed, 0.5f, 3.0f);
+    if (ImGui::Button(OBFUSCATE("Set Target"))) {
+        FindPathState::targetX = FindPathState::inputX;
+        FindPathState::targetY = FindPathState::inputY;
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(OBFUSCATE("Teleport"))) {
+        FindPathState::teleportRequested = true;
+    }
 }
 
 static void DrawFastPanel() {
@@ -219,11 +247,10 @@ static void DrawFastPanel() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    static bool fastFarm = false;
-    static float speedMultiplier = 1.0f;
-
-    ImGui::Checkbox(OBFUSCATE("Fast Farm"), &fastFarm);
-    ImGui::SliderFloat(OBFUSCATE("Speed Multiplier"), &speedMultiplier, 1.0f, 5.0f);
+    ImGui::SliderFloat(OBFUSCATE("Move Speed"), &FastState::moveSpeedMultiplier, 1.0f, 10.0f);
+    ImGui::SliderFloat(OBFUSCATE("Fall Speed"), &FastState::fallSpeedMultiplier, 0.1f, 5.0f);
+    ImGui::Checkbox(OBFUSCATE("No Walk"), &FastState::noWalk);
+    ImGui::Checkbox(OBFUSCATE("Moonwalk"), &FastState::moonwalk);
 }
 
 static void DrawEspPanel() {
