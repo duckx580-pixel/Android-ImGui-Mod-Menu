@@ -22,9 +22,10 @@ JNIEnv *env = nullptr;
 
 static const std::chrono::steady_clock::time_point kStartTime = std::chrono::steady_clock::now();
 
-// Toggle state for the Basic panel's movement modifications. The injection
-// layer (hooks/patches, applied elsewhere) reads these flags each frame to
-// decide whether to apply the corresponding modification.
+// Toggle state for the Basic panel's movement modifications. Intended to be
+// read each frame by a movement-hook module (not implemented in this file —
+// see the hook stub in thread() below) that patches player velocity,
+// collision, and respawn behavior.
 namespace ModState {
     bool modFly = false;         // alters player vertical velocity to simulate creative flight
     bool antiLava = false;       // detects lava tiles and prevents damage events
@@ -34,8 +35,9 @@ namespace ModState {
     bool visualInvisV2 = false;  // adjusts player render opacity to zero while keeping input handling
 }
 
-// Toggle state for the Visual panel. The rendering layer (applied elsewhere)
-// reads these flags each frame to decide what to draw or override.
+// Toggle state for the Visual panel. Intended to be read each frame by a
+// render/overlay hook module (not implemented in this file) that overrides
+// lighting, entity render flags, and UI element visibility.
 namespace VisualState {
     bool nightVision = false;    // overrides ambient light values to full brightness
     bool canSeeGhost = false;    // enables visibility of normally hidden entities by toggling their render flags
@@ -45,9 +47,10 @@ namespace VisualState {
     bool noName = false;         // disables player name label rendering
 }
 
-// Target coordinates for the FindPath panel. The navigation routine
-// (applied elsewhere) reads targetX/targetY and consumes teleportRequested
-// once it has executed the position override.
+// Target coordinates for the FindPath panel. Intended to be read by a
+// navigation-hook module (not implemented in this file): it reads
+// targetX/targetY, and on teleportRequested it writes the player's position
+// and clears the flag once the override has been applied.
 namespace FindPathState {
     int inputX = 0;
     int inputY = 0;
@@ -56,8 +59,9 @@ namespace FindPathState {
     bool teleportRequested = false;
 }
 
-// Speed multipliers and movement toggles for the Fast panel. The movement
-// layer (applied elsewhere) reads these values each frame.
+// Speed multipliers and movement toggles for the Fast panel. Intended to be
+// read each frame by the same movement-hook module as ModState (not
+// implemented in this file) to scale velocity and invert input direction.
 namespace FastState {
     float moveSpeedMultiplier = 1.0f;
     float fallSpeedMultiplier = 1.0f;
@@ -65,8 +69,9 @@ namespace FastState {
     bool moonwalk = false;    // reverses movement direction input
 }
 
-// Toggle state for the ESP panel. The rendering layer (applied elsewhere)
-// reads these flags each frame to decide what overlays to draw.
+// Toggle state for the ESP panel. Intended to be read each frame by an
+// ESP render module (not implemented in this file) that draws the
+// corresponding overlay for each nearby entity.
 namespace EspState {
     bool showName = false;       // renders nametags over entities
     bool showHealthBar = false;  // draws health indicators above players
@@ -76,9 +81,11 @@ namespace EspState {
     bool showLine = false;       // draws connection lines from player to nearby entities
 }
 
-// State for the Extract panel. The collection routine (applied elsewhere)
-// consumes extractRequested and appends the names of items it picked up to
-// extractedItems for display.
+// State for the Extract panel. Intended to be read by a collection-routine
+// module (not implemented in this file, and out of scope for this menu
+// framework) that would consume extractRequested and append picked-up item
+// names to extractedItems for display; extractedItems is otherwise only
+// ever cleared here via the "Clear List" button.
 namespace ExtractState {
     bool extractRequested = false;
     std::vector<std::string> extractedItems;
@@ -414,7 +421,9 @@ void DrawMenu() {
         return;
     }
 
-    ImGui::BeginChild("##sidebar", ImVec2(130.0f, 0.0f), true);
+    float footerHeight = ImGui::GetFrameHeightWithSpacing();
+
+    ImGui::BeginChild("##sidebar", ImVec2(130.0f, -footerHeight), true);
     for (int i = 0; i < IM_ARRAYSIZE(categories); i++) {
         bool selected = (activeCategory == i);
 
@@ -434,9 +443,12 @@ void DrawMenu() {
 
     ImGui::SameLine();
 
-    ImGui::BeginChild("##content", ImVec2(0.0f, 0.0f), true);
+    ImGui::BeginChild("##content", ImVec2(0.0f, -footerHeight), true);
     categories[activeCategory].draw();
     ImGui::EndChild();
+
+    ImGui::Separator();
+    ImGui::TextUnformatted(SelectLabel(isInitialized, OBFUSCATE("Ready"), OBFUSCATE("Initializing")));
 
     // Persist position/size once the drag or resize has settled.
     ImVec2 pos = ImGui::GetWindowPos();
