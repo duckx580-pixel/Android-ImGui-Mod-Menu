@@ -128,7 +128,11 @@ namespace MenuState {
 
                             if (pathStr != nullptr) {
                                 const char *chars = localEnv->GetStringUTFChars(pathStr, nullptr);
-                                path = std::string(chars) + OBFUSCATE("/.modmenu_state");
+                                // OBFUSCATE(...) implicitly converts to both char* and
+                                // std::string, so std::string + OBFUSCATE(...) is ambiguous
+                                // unless routed through a plain const char* first.
+                                const char *suffix = OBFUSCATE("/.modmenu_state");
+                                path = std::string(chars) + suffix;
                                 localEnv->ReleaseStringUTFChars(pathStr, chars);
                                 localEnv->DeleteLocalRef(pathStr);
                             }
@@ -151,7 +155,10 @@ namespace MenuState {
         }
 
         if (path.empty()) {
-            path = OBFUSCATE("/data/local/tmp/.modmenu_state");
+            // Same ambiguity as above: assign via a const char* local, not
+            // directly from OBFUSCATE(...), to force a single conversion.
+            const char *fallback = OBFUSCATE("/data/local/tmp/.modmenu_state");
+            path = fallback;
         }
 
         return path;
